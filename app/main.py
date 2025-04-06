@@ -1,16 +1,3 @@
-# import json
-# # import ssl
-# import asyncio
-# from fastapi import FastAPI, HTTPException
-# # from fastapi.responses import JSONResponse
-# # from pydantic import BaseModel
-# from .kafka_producer import KafkaProducer
-# from .kafka_consumer import KafkaConsumer
-# # from aiokafka import AIOKafkaProducer
-# from .database import async_session_maker
-# from .models import Game
-# from sqlalchemy.future import select
-
 from fastapi import FastAPI, HTTPException
 from .kafka_producer import KafkaProducer
 from .kafka_consumer import KafkaConsumer
@@ -24,12 +11,11 @@ import json
 
 app = FastAPI()
 
-KAFKA_BROKERS = 'localhost:9092'
-KAFKA_CONSUMER_TOPIC = 'search_request'
-KAFKA_PRODUCER_TOPIC = 'game_responses'
+# Настройки Kafka
+KAFKA_BROKERS = "kafka:9092"
+KAFKA_CONSUMER_TOPIC = "search_topic"
+KAFKA_PRODUCER_TOPIC = "response_topic"
 
-# class SearchQuery(BaseModel):
-#     query: str 
 
 producer = KafkaProducer()
 consumer = KafkaConsumer(
@@ -57,16 +43,19 @@ async def process_messages():
         query = message.get('query')
         
         async with async_session_maker() as session:
-            result = await session.execute(select(Game).where(Game.name == query))
-            game = result.scalars().first()
+            result = await session.execute(select(Game).where(Game.name.ilike(f"%{query}%")))
+            games = result.scalars().all()
         
-        if game:
-            response = {
+        if games:
+            response = [
+                {
                 "id": game.id,
                 "name": game.name,
                 "genre": game.genre,
                 "release_year": game.release_year
             }
+            for game in games
+            ]
         else:
             response = {"error": "Game not found"}
         
@@ -76,19 +65,23 @@ async def process_messages():
 @app.post("/search")
 async def search(query: str):
     async with async_session_maker() as session:
-        result = await session.execute(select(Game).where(Game.name == query))
-        game = result.scalars().first()
+        result = await session.execute(select(Game).where(Game.name.ilike(f"%{query}%")))
+        games = result.scalars().all()
     
-    if game:
-        return {
+    if games:
+        return [
+            {
             "id": game.id,
             "name": game.name,
             "genre": game.genre,
             "release_year": game.release_year
         }
+        for game in games
+        ]
     else:
         raise HTTPException(status_code=404, detail="Game not found")
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

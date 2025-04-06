@@ -1,14 +1,16 @@
 from aiokafka import AIOKafkaConsumer
 import asyncio
 import logging
+import os
+import json
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class KafkaConsumer:
-    def __init__(self, topic: str, group_id: str, bootstrap_servers: str):
-        self.bootstrap_servers = bootstrap_servers
+    def __init__(self, topic: str, group_id: str):
+        self.bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
         self.topic = topic
         self.group_id = group_id
         self.consumer = None

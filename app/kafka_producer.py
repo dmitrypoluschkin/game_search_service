@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class KafkaProducer:
     def __init__(self):
-        self.bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+        self.bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
         self.producer: Optional[AIOKafkaProducer] = None
 
     async def init(self):
